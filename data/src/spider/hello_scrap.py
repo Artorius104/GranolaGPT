@@ -4,8 +4,12 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-if not os.path.exists('../res/happy_images'):
-    os.makedirs('../res/happy_images')
+absolute_path = os.path.dirname(__file__)
+relative_path = "../../res"
+full_path = os.path.join(absolute_path, relative_path)
+
+if not os.path.exists(full_path):
+    os.makedirs(full_path)
 
 options = Options()
 options.add_argument('--headless')
