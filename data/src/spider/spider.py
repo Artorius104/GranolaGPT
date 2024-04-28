@@ -51,13 +51,13 @@ def scrapping_images(driver, source: str, page_url: str) -> list[dict[int, str]]
 
 
 # TELECHARGEMENT
-def download_images(element_list: list[dict[int, str]], path: str) -> None:
+def download_images(element_list: list[dict[int, str]], source: str, path: str) -> None:
     for index, img_info in enumerate(element_list):
         img_url = img_info['url']
         response = requests.get(img_url)
 
         if response.status_code == 200:
-            with open(f'{path}/scrapped_{index}.jpg', 'wb') as f:
+            with open(f'{path}/{source}/scrapped_{index}.jpg', 'wb') as f:
                 f.write(response.content)
                 print(f"Image {index} téléchargée avec succès.")
         else:
@@ -66,11 +66,14 @@ def download_images(element_list: list[dict[int, str]], path: str) -> None:
 
 def main():
     # Mettre la catégorie des images à scrapper : happy, sad, neutral
+    # Et la source des source des images : getty, google
     mood = "happy"
-    path = res_path + '/' + mood
+    source = "getty"
+
     # Création du répertoire happy_images si non existant
-    if not os.path.exists(path):
-        os.makedirs(path)
+    path = res_path + '/' + mood
+    if not os.path.exists(path + '/' + source):
+        os.makedirs(path + '/' + source)
 
     # Série d'option nécessaire au fonctionnement de Selenium (à voir pourquoi)
     options = Options()
@@ -80,9 +83,9 @@ def main():
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     # Liste de dictionnaires pour stocker les URLs
-    element_list = scrapping_images(driver, "getty", happy_getty_page_url)
+    element_list = scrapping_images(driver, source, happy_getty_page_url)
     print(element_list)
-    download_images(element_list, path)
+    download_images(element_list, source, path)
 
     # Fermeture du driver
     driver.close()
