@@ -117,7 +117,7 @@ app.layout = html.Div([
 #     ret, buffer = cv2.imencode('.jpg', frame)
 #     frame_bytes = buffer.tobytes()
 #     encoded_image = base64.b64encode(frame_bytes)
-#     src = 'data:image/jpeg;base64,{}'.format(encoded_image.decode())
+#     src = 'scrapping:image/jpeg;base64,{}'.format(encoded_image.decode())
 #
 #     return html.Img(src=src)
 
