@@ -152,9 +152,9 @@ impl MyMLP {
                 }
             }
         }
-        losses.push(epoch_loss / (X_train.len() as f64)); // Stockage de la perte pour cette époque normalisée par le nombre d'échantillons
+        losses.push(epoch_loss / (X_train.len() as f64)); // Stockage de la perte pour cette itération
         }
-        losses // Retour des pertes pour chaque époque
+        losses
     }
 }
 

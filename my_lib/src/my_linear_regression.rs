@@ -64,7 +64,7 @@ pub extern "C" fn train_MyLinearRegression(
 }
 
 #[no_mangle]
-pub extern "C" fn predict_MyLinearRegresion(p_model:*mut MyLinearRegression, 
+pub extern "C" fn predict_MyLinearRegression(p_model:*mut MyLinearRegression, 
                                 p_samples:*const f64, 
                                 input_size:i32, 
                                 n_samples:i32) -> *const f64{
