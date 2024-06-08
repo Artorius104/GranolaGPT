@@ -1,94 +1,95 @@
 extern crate nalgebra as na;
-use na::{DMatrix, DVector};
+use crate::utils::{reshape2D};
 
-use crate::utils::chunk_vector;
-use crate::utils::matrix_from_2d_vec;
+use na::{DMatrix};
 
 pub struct MyLinearRegression {
-    weights: DMatrix<f64>,
+    weights: Vec<Vec<f64>>,
 }
 
 impl MyLinearRegression {
-    pub fn new(input_size: usize, output_sizes: usize) -> Self {
-        MyLinearRegression {
-            weights: DMatrix::zeros(input_size, output_sizes),
+    pub fn new() -> Self {
+        MyLinearRegression { 
+            weights: vec![] 
         }
     }
 
-    pub fn train(&mut self, X: &DMatrix<f64>, y: &DMatrix<f64>) {
-        let X_transpose = X.transpose();
-        let pseudo_inverse = (X_transpose.clone() * X.clone()).try_inverse().unwrap() * X_transpose;
-        self.weights = pseudo_inverse * y;
+    pub fn train(&mut self, x: Vec<Vec<f64>>, y: Vec<Vec<f64>>) {
+        let x_matrix = DMatrix::from_vec(x.len(), x[0].len(), x.iter().flatten().cloned().collect());
+        let y_matrix = DMatrix::from_vec(y.len(), y[0].len(), y.iter().flatten().cloned().collect());
+
+
+        let x_pseudo_inverse = (x_matrix.clone().transpose() * x_matrix.clone()).try_inverse().unwrap() * x_matrix.clone().transpose();
+        let weights_matrix = x_pseudo_inverse * y_matrix;
+
+        self.weights = weights_matrix.row_iter().map(|row| row.iter().cloned().collect()).collect();
     }
 
-    pub fn predict(&self, X: &DMatrix<f64>) -> DMatrix<f64> {
-        X * &self.weights
+    pub fn predict(&self, x: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        let x_matrix = DMatrix::from_vec(x.len(), x[0].len(), x.iter().flatten().cloned().collect());
+        let weights_matrix = DMatrix::from_vec(self.weights.len(), self.weights[0].len(), self.weights.iter().flatten().cloned().collect());
+
+        let predictions = x_matrix * weights_matrix;
+
+        let mut predictions:Vec<Vec<f64>> = predictions.row_iter().map(|row| row.iter().cloned().collect()).collect();
+        predictions
     }
 }
 
 #[no_mangle]
-pub extern "C" fn create_MyLinearRegression(input_size: i32, output_size: i32) -> *mut MyLinearRegression {
-    let model = MyLinearRegression::new(input_size as usize, output_size as usize);
-
+pub extern "C" fn create_MyLinearRegression() -> *mut MyLinearRegression{
+    let model = MyLinearRegression::new();
     let boxed_model = Box::new(model);
-    let leaked_boxed_model = Box::leak(boxed_model);
-    leaked_boxed_model
+    let leaked_model = Box::leak(boxed_model);
+    leaked_model 
 }
 
 #[no_mangle]
-pub extern "C" fn train_MyLinearRegression(
-                            p_model: *mut MyLinearRegression,
+pub extern "C" fn train_MyLinearRegression(p_model:*mut MyLinearRegression,
 
-                            p_X:*const f64,
-                            input_size: i32,
+                                p_X_train:*const f64, 
+                                X_train_shape_0:i32, X_train_shape_1:i32,
 
-                            p_y:*const f64,
-                            output_size : i32,
+                                p_y_train:*const f64, 
+                                y_train_shape_0:i32, y_train_shape_1:i32){
 
-                            n_samples: i32){
+    let mut model = unsafe {&mut *p_model};
 
-    let model = unsafe {&mut *p_model};
+    let flatten_X_train = unsafe {
+        {std::slice::from_raw_parts(p_X_train, (X_train_shape_0 * X_train_shape_1) as usize)}
+    }.to_vec();
+    let X_train = reshape2D(flatten_X_train, (X_train_shape_0 as usize, X_train_shape_1 as usize));
 
-    let X_flatten = unsafe {
-        {std::slice::from_raw_parts(p_X, (input_size * n_samples) as usize)}
-    };
-    let X = chunk_vector(X_flatten.to_vec(), input_size as usize);
-
-    let y_flatten = unsafe {
-        {std::slice::from_raw_parts(p_y, (output_size * n_samples) as usize)}
-    };
-    let y = chunk_vector(y_flatten.to_vec(), output_size as usize);
-
-    let X_matrix = matrix_from_2d_vec(&X);
-    let y_matrix = matrix_from_2d_vec(&y);
-}
-
-#[no_mangle]
-pub extern "C" fn predict_MyLinearRegression(p_model:*mut MyLinearRegression, 
-                                p_samples:*const f64, 
-                                input_size:i32, 
-                                n_samples:i32) -> *const f64{
-
-    let mut predictions:Vec<f64> = vec![];
-    let model = unsafe{&mut *p_model};
-
-    let samples_flatten = unsafe {
-        std::slice::from_raw_parts(p_samples, (input_size * n_samples) as usize)
-    };
-
-    let samples = chunk_vector(samples_flatten.to_vec(), input_size as usize);
+    let flatten_y_train = unsafe {
+        {std::slice::from_raw_parts(p_y_train, (y_train_shape_0 * y_train_shape_1) as usize)}
+    }.to_vec();
+    let y_train = reshape2D(flatten_y_train, (y_train_shape_0 as usize, y_train_shape_1 as usize));
     
-    let samples_matrix = matrix_from_2d_vec(&samples);
+    model.train(X_train, y_train);                                   
+}
 
-    let predictions_matrix = model.predict(&samples_matrix);
+#[no_mangle]
+pub extern "C" fn predict_MyLinearRegression(p_model:*mut MyLinearRegression,
+                                    
+                                p_input:*const f64, 
+                                input_shape_0:i32, input_shape_1:i32) -> *const f64{
 
-    let mut predictions = Vec::new();
-    for i in 0..predictions_matrix.nrows() {
-        for j in 0..predictions_matrix.ncols() {
-            predictions.push(predictions_matrix[(i, j)]);
+    let mut model = unsafe {&mut *p_model};
+
+    let flatten_input = unsafe {
+        {std::slice::from_raw_parts(p_input, (input_shape_0 * input_shape_1) as usize)}
+    }.to_vec();
+    let input = reshape2D(flatten_input, (input_shape_0 as usize, input_shape_1 as usize));
+
+    let predictions = model.predict(input);
+
+    let mut flatten_pred = vec![];
+    for i in 0..predictions.len(){
+        for j in 0..predictions[0].len(){
+            flatten_pred.push(predictions[i][j].clone());
         }
     }
 
-    let leaked_predictions = Vec::leak(predictions.to_vec());
-    leaked_predictions.as_ptr()     
+    let leaked_predictions = Vec::leak(flatten_pred);
+    leaked_predictions.as_ptr()
 }

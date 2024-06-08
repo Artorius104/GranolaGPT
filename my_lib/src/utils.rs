@@ -27,3 +27,39 @@ pub fn matrix_from_2d_vec(data: &Vec<Vec<f64>>) -> DMatrix<f64> {
     }
     matrix
 }
+
+pub fn reshape2D(input: Vec<f64>, reshape_shape: (usize, usize)) -> Vec<Vec<f64>> {
+    let (rows, cols) = reshape_shape;
+    let total_elements = rows * cols;
+    
+    // Vérifie si la taille du vecteur d'entrée correspond aux dimensions souhaitées
+    if input.len() != total_elements {
+        panic!("La taille du vecteur d'entrée ne correspond pas aux dimensions souhaitées");
+    }
+
+    // Crée un nouveau vecteur 2D pour stocker le résultat
+    let mut output = vec![vec![0.0; cols]; rows];
+
+    for i in 0..rows {
+        for j in 0..cols {
+            output[i][j] = input[i * cols + j];
+        }
+    }
+
+    output
+}
+
+pub fn print_matrix(vec: &Vec<Vec<f64>>) {
+    println!("[");
+    for inner_vec in vec {
+        print!("  [");
+        for (i, val) in inner_vec.iter().enumerate() {
+            if i != 0 {
+                print!(", ");
+            }
+            print!("{:.2}", val); // Affiche les valeurs avec deux chiffres après la virgule
+        }
+        println!("],");
+    }
+    println!("]");
+}
