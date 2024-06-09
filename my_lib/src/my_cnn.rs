@@ -31,13 +31,9 @@ impl MyCNN{
         }
     }
 
-    pub fn train(&mut self, 
-                X_train: Vec<Vec<Vec<Vec<f64>>>>, 
-                y_train: Vec<Vec<f64>>, 
-                X_test: Vec<Vec<Vec<Vec<f64>>>>, 
-                y_test: Vec<Vec<f64>>, 
-                learning_rate: f64, 
-                epochs: usize) {
+    pub fn train(&mut self,  X_train: Vec<Vec<Vec<Vec<f64>>>>, y_train: Vec<Vec<f64>>, X_test: Vec<Vec<Vec<Vec<f64>>>>, y_test: Vec<Vec<f64>>, 
+                        learning_rate: f64, 
+                        epochs: usize) {
         let n_samples_train = X_train.len();
         let n_samples_test = X_test.len();
     
@@ -101,6 +97,16 @@ impl MyCNN{
         }
         predictions
     }
+}
+
+pub fn save(model: &MyCNN, path: &str) {
+    let serialized = serde_json::to_string(model).unwrap();
+    std::fs::write(path, serialized).unwrap();
+}
+
+pub fn load(path: &str) -> MyCNN {
+    let data = std::fs::read_to_string(path).unwrap();
+    serde_json::from_str(&data).unwrap()
 }
 
 fn mse(y_true: Vec<f64>, y_pred: Vec<f64>) -> f64 {
@@ -217,9 +223,7 @@ pub extern "C" fn predict_MyCNN(p_model: *mut MyCNN,
 
                                 p_X:*const f64, 
                                 n_images: i32, 
-                                image_depth:i32, 
-                                image_height:i32, 
-                                image_width:i32) -> *const f64 {
+                                image_depth:i32,  image_height:i32, image_width:i32) -> *const f64 {
     let mut model = unsafe {&mut *p_model};
 
     let X_flatten = unsafe {
@@ -251,4 +255,30 @@ pub extern "C" fn get_test_losses_MyCNN(p_model: *mut MyCNN) -> *const f64{
 
     let leaked_test_losses = Vec::leak(test_losses);
     leaked_test_losses.as_ptr() 
+}
+
+#[no_mangle]
+pub extern "C" fn save_MyCNN(p_model: *mut MyCNN, path: *const c_char) {
+    let model = unsafe { &*p_model };
+    let c_str = unsafe {
+        assert!(!path.is_null());
+        CStr::from_ptr(path)
+    };
+    let path_str = c_str.to_str().unwrap();
+
+    save(model, path_str);
+}
+
+#[no_mangle]
+pub extern "C" fn load_MyCNN(path: *const c_char) -> *mut MyCNN {
+    let c_str = unsafe {
+        assert!(!path.is_null());
+        CStr::from_ptr(path)
+    };
+    let path_str = c_str.to_str().unwrap();
+
+    let model = load(path_str);
+    let boxed_model = Box::new(model);
+    let leaked_model = Box::leak(boxed_model);
+    leaked_model
 }

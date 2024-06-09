@@ -1,4 +1,5 @@
-use crate::utils::{correlate2d};
+use std::cmp::{max, min};
+use crate::utils::{zeros_padding};
 
 use serde::{Serialize, Deserialize};
 use std::fs::File;
@@ -79,6 +80,8 @@ pub extern "C" fn create_ConvLayer(input_depth: i32,
     let leaked_conv_layer = Box::leak(boxed_conv_layer);
     leaked_conv_layer 
 }
+
+
 
 #[no_mangle]
 pub extern "C" fn create_ActivationLayer(p_activation_name: *const c_char) -> *mut Layer {
@@ -243,6 +246,79 @@ impl ConvLayer {
             biases: self.biases.clone(),
         }
     }
+}
+
+pub fn correlate2d(input: Vec<Vec<f64>>, kernel: Vec<Vec<f64>>, padding:&str) -> Vec<Vec<f64>> {
+    let mut input = input.clone();
+    let input_height = input.len();
+    let input_width = input[0].len();
+    let kernel_size = kernel.len();
+
+    let (output_height, output_width) = match padding {
+        "valid" => (max(0, input_height - kernel_size + 1), max(0, input_width - kernel_size + 1)),
+        "same" => {
+            let padding_height = (kernel_size - 1) / 2;
+            let padding_width = (kernel_size - 1) / 2;
+            input = zeros_padding(input.clone(), padding_height, padding_width);
+            (input_height, input_width)
+        },
+        "full" => {
+            let padding_height = kernel_size - 1;
+            let padding_width = kernel_size - 1;
+            input = zeros_padding(input, padding_height, padding_width);
+            (input_height + kernel_size - 1, input_width + kernel_size - 1)
+        },
+        _ => panic!("Not valid padding"),
+    };
+    
+    let mut output = vec![vec![0.; output_width]; output_height];
+
+    for y in 0..output.len() {
+        for x in 0..output[0].len() {
+            let mut sum = 0.0;
+            for ky in 0..kernel_size {
+                for kx in 0..kernel_size {
+                    sum += input[y + ky][x + kx] * kernel[ky][kx];
+                }
+            }
+            output[y][x] = sum;
+            
+        }
+    }
+
+    output
+}
+
+#[no_mangle]
+pub extern "C" fn my_correlate2d(input_ptr: *const f64,
+                                    input_height: usize, input_width: usize, 
+                                  
+                                  kernel_ptr: *const f64, 
+                                  kernel_size: usize, 
+                                  
+                                  padding: *const u8, 
+                                  padding_len: usize) -> *const f64 {
+                                    
+    let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_height * input_width) };
+    let kernel_slice = unsafe { std::slice::from_raw_parts(kernel_ptr, kernel_size * kernel_size) };
+    let padding_slice = unsafe { std::slice::from_raw_parts(padding, padding_len) };
+    let padding_str = std::str::from_utf8(padding_slice).unwrap();
+
+    let input = input_slice.chunks(input_width).map(|s| s.to_vec()).collect::<Vec<Vec<f64>>>();
+    let kernel = kernel_slice.chunks(kernel_size).map(|s| s.to_vec()).collect::<Vec<Vec<f64>>>();
+
+    let output = correlate2d(input, kernel, padding_str);
+
+    let output_height = output.len();
+    let output_width = output[0].len();
+    let mut output_flat = Vec::with_capacity(output_height * output_width);
+
+    for row in output {
+        output_flat.extend(row);
+    }
+
+    let leaked_output = Box::leak(output_flat.into_boxed_slice());
+    leaked_output.as_ptr()
 }
 
 //********************************* ACTIVATION LAYER ***************************************************************************************************
