@@ -17,11 +17,11 @@ cargo build --release
 ## Le Dataset
 
 Le dataset est composé des datasets suivants :
-CK PLUS : https://www.kaggle.com/datasets/shawon10/ckplus
-Natural Human Face Images for Emotion Recognition : https://www.kaggle.com/datasets/sudarshanvaidya/random-images-for-face-emotion-recognition
-FER-2013 : https://www.kaggle.com/datasets/msambare/fer2013
-CelebFaces Attributes (CelebA) Dataset : https://www.kaggle.com/datasets/jessicali9530/celeba-dataset
-Human Face Emotions : https://www.kaggle.com/datasets/sanidhyak/human-face-emotions
+  - CK PLUS : https://www.kaggle.com/datasets/shawon10/ckplus
+  - Natural Human Face Images for Emotion Recognition : https://www.kaggle.com/datasets/sudarshanvaidya/random-images-for-face-emotion-recognition
+  - FER-2013 : https://www.kaggle.com/datasets/msambare/fer2013
+  - CelebFaces Attributes (CelebA) Dataset : https://www.kaggle.com/datasets/jessicali9530/celeba-dataset
+  - Human Face Emotions : https://www.kaggle.com/datasets/sanidhyak/human-face-emotions
 
 
 ## L'Application
