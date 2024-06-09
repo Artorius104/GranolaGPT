@@ -11,6 +11,7 @@ from PIL import Image
 import numpy as np
 
 app = Dash(name=__name__, external_stylesheets=[dbc.themes.LUX])
+app.title = "Are You Happy ?"
 
 camera = cv2.VideoCapture(0)
 
@@ -40,7 +41,7 @@ app.layout = html.Div([
     navbar,
     dbc.Container([
         dbc.Stack([
-            dbc.Row(    # AFFICHAGE DE LA PARTIE WEBCAM
+            dbc.Row(    # AFFICHAGE DU FLUX VIDEO
                 dbc.Col(
                     html.Img(
                         id="live-video-feed",
@@ -53,17 +54,17 @@ app.layout = html.Div([
                 ),
                 justify="center",
             ),
-            dcc.Interval(id='interval-component', interval=100, n_intervals=0),  # Ajout de l'Interval component
+            dcc.Interval(id='interval-component', interval=100, n_intervals=0), # FLUX VIDEO
             dbc.Stack([
                 dbc.Row([
-                    dbc.Col([   # BOUTONS PHOTO ET VIDEO
+                    dbc.Col([   # BOUTON PHOTO
                         dbc.Button(
                             "Prendre une photo",
                             id="get-photo",
                             n_clicks=0,
                             style={"margin": "0 20px 0 0"},
                         ),
-                        dbc.Button(
+                        dbc.Button(     # BOUTON VIDEO (NON FAIT)
                             "Prendre une vidéo",
                             id="get-video",
                             n_clicks=0,
@@ -149,25 +150,27 @@ app.layout = html.Div([
 ])
 
 
-# RECUPERATION DE L'IMAGE VIA UPLOAD
+# CALLBACKS + UTILS FOR CALLBACKS
 def parse_contents(contents):
+    """Récupération de l'image via upload"""
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
     image = Image.open(io.BytesIO(decoded))
     return image
 
-# CALLBACKS
 @app.callback(
     Output('confirm-image', 'disabled'),
     Input('upload-image', 'contents')
 )
 def enable_confirm_button(contents):
+    """Active/Désactive le bouton Confirmation"""
     if contents is not None:
         return False
     else:
         return True
 
 def capture_frame():
+    """Capture l'image caméra et l'encode"""
     success, frame = camera.read()
     if success:
         _, buffer = cv2.imencode('.jpg', frame)
@@ -180,6 +183,7 @@ def capture_frame():
     [Input('interval-component', 'n_intervals')]
 )
 def update_live_feed(n_clicks):
+    """Update du flux vidéo"""
     return capture_frame()
 
 @app.callback(
@@ -190,6 +194,7 @@ def update_live_feed(n_clicks):
     ]
 )
 def update_image_uploaded(contents, n_clicks):
+    """Capture d'écran du flux vidéo / Upload d'une image"""
     triggered_id = [p['prop_id'] for p in callback_context.triggered][0]
 
     if triggered_id == 'upload-image.contents':
