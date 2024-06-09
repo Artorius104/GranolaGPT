@@ -1,19 +1,21 @@
 # To build and use the app, do the following :
-# pip install dash
-# pip install dash-bootstrap-components
 # export REACT_VERSION=18.2.0
-# pip install opencv-python
 import base64
+import io
 
-from dash import Dash, html, callback, Output, Input, State, dcc
+from dash import Dash, html, Output, Input, dcc, callback_context
 import dash_bootstrap_components as dbc
 import cv2
 from dash.exceptions import PreventUpdate
+from PIL import Image
+import numpy as np
 
-# app = Dash(__name__)
 app = Dash(name=__name__, external_stylesheets=[dbc.themes.LUX])
-# cap = cv2.VideoCapture(0)
+app.title = "Are You Happy ?"
 
+camera = cv2.VideoCapture(0)
+
+# NAVBAR
 navbar = dbc.NavbarSimple(
     children=[
         dbc.DropdownMenu(
@@ -34,67 +36,106 @@ navbar = dbc.NavbarSimple(
     dark=True,
 )
 
+# LAYOUT
 app.layout = html.Div([
     navbar,
     dbc.Container([
-        dbc.Stack(
-            [
-                dbc.Row(
-                    dbc.Col(
-                        "Screenshots",
-                        id="opencv-component",
-                        width=4,
-                        style={"text-align": "center"}
+        dbc.Stack([
+            dbc.Row(    # AFFICHAGE DU FLUX VIDEO
+                dbc.Col(
+                    html.Img(
+                        id="live-video-feed",
+                        alt="Screenshot !"
                     ),
-                    justify="center",
+                    id="opencv-component",
+                    width="auto",
+                    align="center",
+                    style={"text-align": "center"}
                 ),
-                dbc.Row(
-                    dbc.Col([
+                justify="center",
+            ),
+            dcc.Interval(id='interval-component', interval=100, n_intervals=0), # FLUX VIDEO
+            dbc.Stack([
+                dbc.Row([
+                    dbc.Col([   # BOUTON PHOTO
                         dbc.Button(
                             "Prendre une photo",
-                            id="take-photo",
+                            id="get-photo",
                             n_clicks=0,
-                            style={"margin": "0 20px"},
+                            style={"margin": "0 20px 0 0"},
                         ),
-                        dbc.Button(
+                        dbc.Button(     # BOUTON VIDEO (NON FAIT)
                             "Prendre une vidéo",
-                            id="take-video",
+                            id="get-video",
                             n_clicks=0,
-                            style={"margin": "0 20px"},
-                        ),
-                        dcc.Upload(
-                            id="upload-image",
-                            children=html.Div([
-'Drag and Drop or ',
-            html.A('Select Files')
-                            ]),
-                        ),
-                    ],
+                            disabled=True,
+                            style={"margin": "0 0 0 20px"},
+                        )],
                         width="auto",
-                    ),
-                    justify="center",
+                    )],
+                    justify="center"
                 ),
                 dbc.Row(
                     dbc.Col(
-                        "Application de l'algorithme... Patience !",
-                        id="loading-label",
-                        width=4,
-                        align="center",
-                        style={"text-align": "center"}
+                        dcc.Upload( # UPLOAD BOUTON
+                            id="upload-image",
+                            children=dbc.Button([
+                                'Drag and Drop or ',
+                                html.A('Select Files')],
+                                outline=True,
+                                style={
+                                    'border': '2px solid black',
+                                }
+                            ),
+                        ),
+                        width="auto",
                     ),
-                    justify="center",
+                    justify="center"
+                )],
+                gap=3
+            ),
+            dbc.Row(    # AFFICHAGE DE L'IMAGE OBTENUE
+                dbc.Col(
+                    html.Div(id='image-uploaded'),
+                    id="image-uploaded-container",
+                    width="auto",
+                    align="center",
+                    style={"text-align": "center"}
                 ),
-            ],
+                justify="center",
+            ),
+            dbc.Row([   # BOUTON CONFIRMATION
+                dbc.Col([
+                    dbc.Button(
+                        "Confirmation",
+                        id="confirm-image",
+                        n_clicks=0,
+                        disabled=True
+                    )],
+                    width="auto",
+                )],
+                justify="center",
+            ),
+            dbc.Row(
+                dbc.Col(    # MESSAGE DE TRAITEMENT DE L'IMAGE PAR LE MODELE
+                    "Application de l'algorithme... Patience !",
+                    id="loading-label",
+                    width=4,
+                    align="center",
+                    style={"text-align": "center"}
+                ),
+                justify="center",
+            )],
             id='page-inputs',
-            gap=5
+            gap=4
         ),
         html.Hr(),
-        dbc.Stack(
+        dbc.Stack(  # AFFICHAGE DU RESULTAT
             [
                 dbc.Row(
                     dbc.Col(
                         "Résultat de l'algorithme",
-                        id="page-outputs",
+                        id="algo-result",
                         width=4,
                         align="center",
                         style={"text-align": "center"}
@@ -109,24 +150,77 @@ app.layout = html.Div([
 ])
 
 
-# @callback(
-#     Output("opencv-component", "children"),
-#     [Input("take-photo", "n_clicks")]
-# )
-# def update_webcam_content(n_clicks):
-#     print("PRINT 1")
-#     if n_clicks is None:
-#         raise PreventUpdate
-#     print("PRINT 2")
-#
-#     ret, frame = cap.read()
-#
-#     ret, buffer = cv2.imencode('.jpg', frame)
-#     frame_bytes = buffer.tobytes()
-#     encoded_image = base64.b64encode(frame_bytes)
-#     src = 'scrapping:image/jpeg;base64,{}'.format(encoded_image.decode())
-#
-#     return html.Img(src=src)
+# CALLBACKS + UTILS FOR CALLBACKS
+def parse_contents(contents):
+    """Récupération de l'image via upload"""
+    content_type, content_string = contents.split(',')
+    decoded = base64.b64decode(content_string)
+    image = Image.open(io.BytesIO(decoded))
+    return image
+
+@app.callback(
+    Output('confirm-image', 'disabled'),
+    Input('upload-image', 'contents')
+)
+def enable_confirm_button(contents):
+    """Active/Désactive le bouton Confirmation"""
+    if contents is not None:
+        return False
+    else:
+        return True
+
+def capture_frame():
+    """Capture l'image caméra et l'encode"""
+    success, frame = camera.read()
+    if success:
+        _, buffer = cv2.imencode('.jpg', frame)
+        encoded_image = base64.b64encode(buffer).decode('utf-8')
+        return f'data:image/jpeg;base64,{encoded_image}'
+    return None
+
+@app.callback(
+    Output('live-video-feed', 'src'),
+    [Input('interval-component', 'n_intervals')]
+)
+def update_live_feed(n_clicks):
+    """Update du flux vidéo"""
+    return capture_frame()
+
+@app.callback(
+    Output('image-uploaded', 'children'),
+    [
+        Input('upload-image', 'contents'),
+        Input('get-photo', 'n_clicks')
+    ]
+)
+def update_image_uploaded(contents, n_clicks):
+    """Capture d'écran du flux vidéo / Upload d'une image"""
+    triggered_id = [p['prop_id'] for p in callback_context.triggered][0]
+
+    if triggered_id == 'upload-image.contents':
+        if contents is not None:
+            image = parse_contents(contents)
+            image_array = np.array(image)
+            return html.Div([
+                html.H5("Image obtenue :"),
+                html.Img(src=contents, style={'width': '50%'})
+            ])
+        else:
+            return html.Div([
+                html.H5("Aucune image")
+            ])
+
+    elif triggered_id == 'get-photo.n_clicks':
+        if n_clicks > 0:
+            src_image = capture_frame()
+            return html.Div([
+                html.H5("Image obtenue :"),
+                html.Img(src=src_image)
+            ])
+
+    return html.Div([
+        html.H5("Aucune image")
+    ])
 
 if __name__ == '__main__':
     app.run(
