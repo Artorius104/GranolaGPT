@@ -1,5 +1,5 @@
 extern crate nalgebra as na;
-use crate::utils::{reshape2D, print_matrix};
+use crate::utils::{reshape2D, print_matrix, gauss_kernel};
 
 use na::{DMatrix, DVector};
 use std::f64::consts::E;
@@ -23,16 +23,16 @@ impl MyRBF {
     pub fn train(&mut self, X_train: Vec<Vec<f64>>, y_train: Vec<Vec<f64>>) {
         let num_samples = X_train.len();
         let num_centers = self.centers.len();
-        let output_dim = y_train[0].len();
+        let y_dim = y_train[0].len();
 
         let mut matrix = DMatrix::zeros(num_samples, num_centers);
         for i in 0..num_samples {
             for j in 0..num_centers {
-                matrix[(i, j)] = self.rbf(&X_train[i], &self.centers[j]);
+                matrix[(i, j)] = gauss_kernel(&X_train[i], &self.centers[j], self.gamma);
             }
         }
 
-        let target_matrix = DMatrix::from_fn(num_samples, output_dim, |i, j| y_train[i][j]);
+        let target_matrix = DMatrix::from_fn(num_samples, y_dim, |i, j| y_train[i][j]);
 
         let matrix_t = matrix.transpose();
         let matrix_t_matrix = &matrix_t * &matrix;
@@ -46,45 +46,28 @@ impl MyRBF {
     pub fn predict(&self, input: Vec<Vec<f64>>, is_classification:bool) -> Vec<Vec<f64>> {
         let num_samples = input.len();
         let num_centers = self.centers.len();
-        let output_dim = self.weights[0].len();
+        let y_dim = self.weights[0].len();
 
         let mut predictions = Vec::with_capacity(num_samples);
         for i in 0..num_samples {
-            let mut pred: Vec<f64> = vec![0.0; output_dim];
+            let mut pred: Vec<f64> = vec![0.0; y_dim];
             for j in 0..num_centers {
-                let rbf_value = self.rbf(&input[i], &self.centers[j]);
-                for k in 0..output_dim {
+                let rbf_value = gauss_kernel(&input[i], &self.centers[j], self.gamma);
+                let mut sum = 0.;
+                for k in 0..y_dim {
                     pred[k] += self.weights[j][k] * rbf_value;
                 }
             }
-
             if is_classification{
-                let mut max = f64::NEG_INFINITY;
-                let mut index_max = 0;
-                for k in 0..output_dim{
-                    if pred[k] > max {
-                        max = pred[k];
-                        index_max = k;
-                    }
+                for k in 0..y_dim{
+                    if pred[k] < 0.{pred[k] = -1.;} else {pred[k] = 1.;}
                 }
-                pred = vec![0.;output_dim];
-                pred[index_max] = 1.;
             }
-
             predictions.push(pred);
         }
         predictions
     }
-
-    fn rbf(&self, x: &Vec<f64>, c: &Vec<f64>) -> f64 {
-        let mut sum = 0.0;
-        for (xi, ci) in x.iter().zip(c.iter()) {
-            sum += (xi - ci).powi(2);
-        }
-        (-self.gamma * sum).exp()
-    }
 }
-
 
 #[no_mangle]
 pub extern "C" fn create_MyRBF(p_centers:*const f64, 
@@ -100,7 +83,7 @@ pub extern "C" fn create_MyRBF(p_centers:*const f64,
 
     let model = MyRBF::new(centers, gamma);
     let boxed_model = Box::new(model);
-    let leaked_model = Box::leak(boxed_model);
+    let leaked_model = Box::leak(boxed_model);  
     leaked_model 
 }
 
@@ -133,6 +116,7 @@ pub extern "C" fn predict_MyRBF(p_model:*mut MyRBF,
                                     
                                 p_input:*const f64, 
                                 input_shape_0:i32, input_shape_1:i32,
+                            
                                 is_classification:bool) -> *const f64{
 
     let mut model = unsafe {&mut *p_model};

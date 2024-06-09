@@ -14,22 +14,22 @@ impl MyLinearRegression {
         }
     }
 
-    pub fn train(&mut self, x: Vec<Vec<f64>>, y: Vec<Vec<f64>>) {
-        let x_matrix = DMatrix::from_vec(x.len(), x[0].len(), x.iter().flatten().cloned().collect());
+    pub fn train(&mut self, X_train: Vec<Vec<f64>>, y: Vec<Vec<f64>>) {
+        let X_train_matrix = DMatrix::from_vec(X_train.len(), X_train[0].len(), X_train.iter().flatten().cloned().collect());
         let y_matrix = DMatrix::from_vec(y.len(), y[0].len(), y.iter().flatten().cloned().collect());
 
 
-        let x_pseudo_inverse = (x_matrix.clone().transpose() * x_matrix.clone()).try_inverse().unwrap() * x_matrix.clone().transpose();
+        let x_pseudo_inverse = (X_train_matrix.clone().transpose() * X_train_matrix.clone()).try_inverse().unwrap() * X_train_matrix.clone().transpose();
         let weights_matrix = x_pseudo_inverse * y_matrix;
 
         self.weights = weights_matrix.row_iter().map(|row| row.iter().cloned().collect()).collect();
     }
 
-    pub fn predict(&self, x: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
-        let x_matrix = DMatrix::from_vec(x.len(), x[0].len(), x.iter().flatten().cloned().collect());
+    pub fn predict(&self, input: Vec<Vec<f64>>) -> Vec<Vec<f64>> {
+        let input_matrix = DMatrix::from_vec(input.len(), input[0].len(), input.iter().flatten().cloned().collect());
         let weights_matrix = DMatrix::from_vec(self.weights.len(), self.weights[0].len(), self.weights.iter().flatten().cloned().collect());
 
-        let predictions = x_matrix * weights_matrix;
+        let predictions = input_matrix * weights_matrix;
 
         let mut predictions:Vec<Vec<f64>> = predictions.row_iter().map(|row| row.iter().cloned().collect()).collect();
         predictions

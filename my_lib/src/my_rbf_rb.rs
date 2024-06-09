@@ -1,158 +1,121 @@
 use rand::Rng;
+use crate::utils::{reshape2D, gauss_kernel};
 
-pub struct MyRBF_rb {
-    hidden_weights: Vec<Vec<f64>>, // Poids de la couche cachée
-    output_weights: Vec<Vec<f64>>, // Poids de la couche de sortie
-    output_bias: Vec<f64>, // Biais de la couche de sortie
-    centers: Vec<Vec<f64>>, // Centres des neurones RBF
-    gamma: f64, // gamma
+pub struct MyRBF_rb{
+    weights : Vec<Vec<f64>>,
+    biases : Vec<f64>,
+    centers : Vec<Vec<f64>>,
+    y_dim : usize,
+    gamma:f64
 }
 
-impl MyRBF_rb {
-    pub fn new(centers: Vec<Vec<f64>>, n_hidden_neurons: usize, n_output_neurons: usize, gamma: f64) -> Self {
-        let (n_samples, n_features) = (centers.len(), centers[0].len());
-
-        let mut hidden_weights = vec![vec![0.; n_samples]; n_hidden_neurons];
-        for i in 0..n_hidden_neurons {
-            for j in 0..n_samples {
-                hidden_weights[i][j] = rand::thread_rng().gen_range(-1.0..=1.0);
+impl MyRBF_rb{
+    pub fn new(centers:Vec<Vec<f64>>, y_dim:usize, gamma:f64) -> Self{
+        let (n_centers, n_features) = (centers.len(), centers[0].len());
+        let mut weights= vec![vec![1.;n_centers];y_dim]; 
+        let mut biases = vec![0.; y_dim];
+        for i in 0..y_dim{
+            for j in 0..n_centers{
+                weights[i][j] = rand::thread_rng().gen_range(-1.0..=1.0);
             }
+            biases[i] = rand::thread_rng().gen_range(-1.0..=1.0);
         }
-
-        let mut output_weights = vec![vec![0.; n_hidden_neurons]; n_output_neurons];
-        for i in 0..n_output_neurons {
-            for j in 0..n_hidden_neurons {
-                output_weights[i][j] = rand::thread_rng().gen_range(-1.0..=1.0);
-            }
-        }
-
-        let mut output_bias = vec![0.; n_output_neurons];
-        for i in 0..n_output_neurons {
-            output_bias[i] = rand::thread_rng().gen_range(-1.0..=1.0);
-        }
-
-        MyRBF_rb {
-            hidden_weights: hidden_weights,
-            output_weights: output_weights,
-            output_bias: output_bias,
-            centers: centers.clone(),
-            gamma: gamma,
+        MyRBF_rb{
+            weights : weights,
+            biases : biases,
+            centers : centers,
+            y_dim : y_dim,
+            gamma : gamma
         }
     }
-
-    pub fn train(&mut self, X_train: Vec<Vec<f64>>, y_train: Vec<Vec<f64>>, learning_rate: f64, epochs: usize, is_classification: bool) {
-        let n_hidden_neurons = self.hidden_weights.len();
-        let n_output_neurons = self.output_weights.len();
-
-        for epoch in 0..epochs {
-            for (x, y) in X_train.iter().zip(y_train.iter()) {
-                let mut hidden_output: Vec<f64> = vec![0.0; n_hidden_neurons];
-                for i in 0..n_hidden_neurons {
-                    let mut res: f64 = 0.0;
-                    for j in 0..self.centers.len() {
-                        let gauss = gauss_kernel(x, &self.centers[j], self.gamma);
-                        res += gauss * self.hidden_weights[i][j];
+    pub fn train(&mut self, X_train:Vec<Vec<f64>>, y_train:Vec<Vec<f64>>, learning_rate:f64, epochs:usize, is_classification:bool){
+        let (n_centers, n_features) = (self.centers.len(), self.centers[0].len());
+        for e in 0..epochs{
+            for k in 0..X_train.len(){
+                let mut hidden_output = vec![0.;n_centers];
+                for c in 0..n_centers{
+                    hidden_output[c] = gauss_kernel(&X_train[k],&self.centers[c], self.gamma);
+                }
+    
+                let mut pred = vec![0.;self.y_dim];
+                for i in 0..self.y_dim{
+                    for j in 0..n_centers{
+                        pred[i] += self.weights[i][j] * hidden_output[j];
                     }
-                    hidden_output[i] = res;
+                    pred[i] += self.biases[i];
+                }
+                if is_classification{
+                    for i in 0..self.y_dim{
+                        if pred[i] < 0.{
+                            pred[i] = -1.;
+                        }
+                        else {
+                            pred[i] = 1.;
+                        }
+                    }
+                }
+                let mut error = vec![0.0; self.y_dim];
+                for i in 0..self.y_dim {
+                    error[i] = y_train[k][i] - pred[i];
                 }
 
-                let mut output = vec![0.0; n_output_neurons];
-                for i in 0..n_output_neurons {
-                    for j in 0..n_hidden_neurons {
-                        output[i] += self.output_weights[i][j] * hidden_output[j];
+                for i in 0..self.y_dim {
+                    for j in 0..n_centers {
+                        self.weights[i][j] += learning_rate * error[i] * hidden_output[j];
                     }
-                    output[i] += self.output_bias[i];
-                }
-
-                let mut error = vec![0.0; n_output_neurons];
-                for i in 0..n_output_neurons {
-                    error[i] = y[i] - output[i];
-                }
-                for i in 0..n_output_neurons {
-                    for j in 0..n_hidden_neurons {
-                        self.output_weights[i][j] += learning_rate * error[i] * hidden_output[j];
-                    }
-                    self.output_bias[i] += learning_rate * error[i];
+                    self.biases[i] += learning_rate * error[i];
                 }
             }
 
             let mut total_error = 0.0;
             for (x, y) in X_train.iter().zip(y_train.iter()) {
                 let prediction = self.predict(vec![x.clone()], false)[0].clone();
-                for i in 0..n_output_neurons {
+                for i in 0..self.y_dim {
                     total_error += (y[i] - prediction[i]).powi(2);
                 }
             }
-            println!("Epoch {}: Total Error = {}", epoch + 1, total_error);
+            // println!("Epoch {}: Total Error = {}", e + 1, total_error);
         }
+
     }
 
-    pub fn predict(&self, input: Vec<Vec<f64>>, is_classification: bool) -> Vec<Vec<f64>> {
-        let n_hidden_neurons = self.hidden_weights.len();
-        let n_output_neurons = self.output_weights.len();
-        let n_samples = input.len();
-        let mut predictions = vec![vec![0.0; n_output_neurons]; n_samples];
-
-        for k in 0..n_samples {
-            let mut hidden_output: Vec<f64> = vec![0.0; n_hidden_neurons];
-            let single_sample = &input[k];
-            for i in 0..n_hidden_neurons {
-                let mut res: f64 = 0.0;
-                for j in 0..self.centers.len() {
-                    let gauss = gauss_kernel(&single_sample, &self.centers[j], self.gamma);
-                    res += gauss * self.hidden_weights[i][j];
-                }
-                hidden_output[i] = res;
+    pub fn predict(&self, input:Vec<Vec<f64>>, is_classification:bool) -> Vec<Vec<f64>>{
+        let (n_centers, n_features) = (self.centers.len(), self.centers[0].len());
+        let mut predictions = vec![];
+        for k in 0..input.len(){
+            let mut hidden_output = vec![0.;n_centers];
+            for c in 0..n_centers{
+                hidden_output[c] = gauss_kernel(&input[k],&self.centers[c], self.gamma);
             }
 
-            let mut pred = vec![0.0; n_output_neurons];
-            for i in 0..n_output_neurons {
-                for j in 0..n_hidden_neurons {
-                    pred[i] += self.output_weights[i][j] * hidden_output[j];
+            let mut pred = vec![0.;self.y_dim];
+            for i in 0..self.y_dim{
+                for j in 0..n_centers{
+                    pred[i] += self.weights[i][j] * hidden_output[j];
                 }
-                pred[i] += self.output_bias[i];
+                pred[i] += self.biases[i];
             }
 
-            predictions[k] = pred;
-
-            if is_classification == true {
-                let mut max_index = 0;
-                let mut max_value = f64::NEG_INFINITY;
-                for i in 0..n_output_neurons {
-                    if predictions[k][i] > max_value {
-                        max_index = i;
-                        max_value = predictions[k][i];
+            if is_classification{
+                for i in 0..self.y_dim{
+                    if pred[i] < 0.{
+                        pred[i] = -1.;
+                    }
+                    else {
+                        pred[i] = 1.;
                     }
                 }
-                pred = vec![0.0; n_output_neurons];
-                pred[max_index] = 1.0;
-                predictions[k] = pred;
             }
+            predictions.push(pred);
         }
         predictions
     }
 }
 
-fn gauss_kernel(x: &Vec<f64>, c: &Vec<f64>, sigma: f64) -> f64 {
-    if x.len() != c.len() {
-        panic!("Les vecteurs x et c doivent avoir la même longueur");
-    }
-    
-    let mut sum = 0.0;
-    for i in 0..x.len() {
-        sum += (x[i] - c[i]).powi(2);
-    }
-
-    (-sum / (2.0 * sigma.powi(2))).exp()
-}
-
-//pub fn new(X_train:Vec<Vec<f64>>, n_hidden_neurons:usize, n_output_neurons:usize, gamma:f64)
-
 #[no_mangle]
 pub extern "C" fn create_MyRBF_rb(p_X_train:*const f64, 
                                 X_train_shape_0:i32, X_train_shape_1:i32,
-                                n_hidden_neurons:i32,
-                                n_output_neurons:i32,
+                                y_dim:i32,
                                 gamma:f64
                                 ) -> *mut MyRBF_rb{
 
@@ -162,13 +125,12 @@ pub extern "C" fn create_MyRBF_rb(p_X_train:*const f64,
 
     let X_train = reshape2D(flatten_X_train, (X_train_shape_0 as usize, X_train_shape_1 as usize));
 
-    let model = MyRBF_rb::new(X_train, n_hidden_neurons as usize, n_output_neurons as usize, gamma);
+    let model = MyRBF_rb::new(X_train, y_dim as usize, gamma);
     let boxed_model = Box::new(model);
     let leaked_model = Box::leak(boxed_model);
     leaked_model 
 }
 
-//pub fn train(&mut self, X_train: Vec<Vec<f64>>, y_train: Vec<Vec<f64>>, gamma: f64, epochs: usize, is_classification: bool)
 #[no_mangle]
 pub extern "C" fn train_MyRBF_rb(p_model:*mut MyRBF_rb,
 
@@ -226,26 +188,4 @@ pub extern "C" fn predict_MyRBF_rb(p_model:*mut MyRBF_rb,
 
     let leaked_predictions = Vec::leak(flatten_pred);
     leaked_predictions.as_ptr()
-}
-
-
-pub fn reshape2D(input: Vec<f64>, reshape_shape: (usize, usize)) -> Vec<Vec<f64>> {
-    let (rows, cols) = reshape_shape;
-    let total_elements = rows * cols;
-    
-    // Vérifie si la taille du vecteur d'entrée correspond aux dimensions souhaitées
-    if input.len() != total_elements {
-        panic!("La taille du vecteur d'entrée ne correspond pas aux dimensions souhaitées");
-    }
-
-    // Crée un nouveau vecteur 2D pour stocker le résultat
-    let mut output = vec![vec![0.0; cols]; rows];
-
-    for i in 0..rows {
-        for j in 0..cols {
-            output[i][j] = input[i * cols + j];
-        }
-    }
-
-    output
 }
