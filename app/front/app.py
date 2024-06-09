@@ -1,3 +1,5 @@
+from load_lib import load_my_lib, load_MyMLP, predict_MyMLP
+
 # To build and use the app, do the following :
 # export REACT_VERSION=18.2.0
 import base64
@@ -65,7 +67,7 @@ app.layout = html.Div([
                             style={"margin": "0 20px 0 0"},
                         ),
                         dbc.Button(     # BOUTON VIDEO (NON FAIT)
-                            "Option Vidéo indisponible",
+                            "Prendre une vidéo",
                             id="get-video",
                             n_clicks=0,
                             disabled=True,
@@ -107,7 +109,7 @@ app.layout = html.Div([
             dbc.Row([   # BOUTON CONFIRMATION
                 dbc.Col([
                     dbc.Button(
-                        "Are You Happy ?",
+                        "Confirmation",
                         id="confirm-image",
                         n_clicks=0,
                         disabled=True
@@ -199,9 +201,22 @@ def update_image_uploaded(contents, n_clicks):
 
     if triggered_id == 'upload-image.contents':
         if contents is not None:
-            image = parse_contents(contents)
+            image = parse_contents(contents).convert('RGB').resize((64, 64))
             image_array = np.array(image)
-            # res = model(image_array)
+            image_array_normalized = image_array / 255.0
+            image_array_flattened = image_array_normalized.flatten()
+            
+            model_path = "first_model.json"
+            model = load_MyMLP(model_path)
+            
+            print(image_array_flattened.reshape(1,-1).shape)
+            prediction = np.argmax(predict_MyMLP(model, image_array_flattened.reshape(1,-1), 3, False))
+            
+            print(prediction)
+            
+            # print(image_array_flattened.shape)
+
+            
             return html.Div([
                 html.H5("Image obtenue :"),
                 html.Img(src=contents, style={'width': '50%'})
@@ -214,11 +229,6 @@ def update_image_uploaded(contents, n_clicks):
     elif triggered_id == 'get-photo.n_clicks':
         if n_clicks > 0:
             src_image = capture_frame()
-            content_type, content_string = src_image.split(',')
-            decoded = base64.b64decode(content_string)
-            image = Image.open(io.BytesIO(decoded))
-            image_array = np.array(image)
-            # res = model(image_array)
             return html.Div([
                 html.H5("Image obtenue :"),
                 html.Img(src=src_image)
@@ -227,6 +237,7 @@ def update_image_uploaded(contents, n_clicks):
     return html.Div([
         html.H5("Aucune image")
     ])
+    
 
 if __name__ == '__main__':
     app.run(
