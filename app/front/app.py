@@ -65,7 +65,7 @@ app.layout = html.Div([
                             style={"margin": "0 20px 0 0"},
                         ),
                         dbc.Button(     # BOUTON VIDEO (NON FAIT)
-                            "Prendre une vidéo",
+                            "Option Vidéo indisponible",
                             id="get-video",
                             n_clicks=0,
                             disabled=True,
@@ -107,7 +107,7 @@ app.layout = html.Div([
             dbc.Row([   # BOUTON CONFIRMATION
                 dbc.Col([
                     dbc.Button(
-                        "Confirmation",
+                        "Are You Happy ?",
                         id="confirm-image",
                         n_clicks=0,
                         disabled=True
@@ -201,6 +201,7 @@ def update_image_uploaded(contents, n_clicks):
         if contents is not None:
             image = parse_contents(contents)
             image_array = np.array(image)
+            # res = model(image_array)
             return html.Div([
                 html.H5("Image obtenue :"),
                 html.Img(src=contents, style={'width': '50%'})
@@ -213,6 +214,11 @@ def update_image_uploaded(contents, n_clicks):
     elif triggered_id == 'get-photo.n_clicks':
         if n_clicks > 0:
             src_image = capture_frame()
+            content_type, content_string = src_image.split(',')
+            decoded = base64.b64decode(content_string)
+            image = Image.open(io.BytesIO(decoded))
+            image_array = np.array(image)
+            # res = model(image_array)
             return html.Div([
                 html.H5("Image obtenue :"),
                 html.Img(src=src_image)
