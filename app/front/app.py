@@ -3,7 +3,7 @@
 import base64
 import io
 
-from dash import Dash, html, callback, Output, Input, State, dcc
+from dash import Dash, html, Output, Input, dcc, callback_context
 import dash_bootstrap_components as dbc
 import cv2
 from dash.exceptions import PreventUpdate
@@ -11,7 +11,8 @@ from PIL import Image
 import numpy as np
 
 app = Dash(name=__name__, external_stylesheets=[dbc.themes.LUX])
-# cap = cv2.VideoCapture(0)
+
+camera = cv2.VideoCapture(0)
 
 # NAVBAR
 navbar = dbc.NavbarSimple(
@@ -41,26 +42,32 @@ app.layout = html.Div([
         dbc.Stack([
             dbc.Row(    # AFFICHAGE DE LA PARTIE WEBCAM
                 dbc.Col(
-                    "Screenshots",
+                    html.Img(
+                        id="live-video-feed",
+                        alt="Screenshot !"
+                    ),
                     id="opencv-component",
-                    width=4,
+                    width="auto",
+                    align="center",
                     style={"text-align": "center"}
                 ),
                 justify="center",
             ),
+            dcc.Interval(id='interval-component', interval=100, n_intervals=0),  # Ajout de l'Interval component
             dbc.Stack([
                 dbc.Row([
                     dbc.Col([   # BOUTONS PHOTO ET VIDEO
                         dbc.Button(
                             "Prendre une photo",
-                            id="take-photo",
+                            id="get-photo",
                             n_clicks=0,
                             style={"margin": "0 20px 0 0"},
                         ),
                         dbc.Button(
                             "Prendre une vidéo",
-                            id="take-video",
+                            id="get-video",
                             n_clicks=0,
+                            disabled=True,
                             style={"margin": "0 0 0 20px"},
                         )],
                         width="auto",
@@ -88,8 +95,8 @@ app.layout = html.Div([
             ),
             dbc.Row(    # AFFICHAGE DE L'IMAGE OBTENUE
                 dbc.Col(
-                    html.Div(id='output-image-upload'),
-                    id="image-outputs",
+                    html.Div(id='image-uploaded'),
+                    id="image-uploaded-container",
                     width="auto",
                     align="center",
                     style={"text-align": "center"}
@@ -127,7 +134,7 @@ app.layout = html.Div([
                 dbc.Row(
                     dbc.Col(
                         "Résultat de l'algorithme",
-                        id="algo-text",
+                        id="algo-result",
                         width=4,
                         align="center",
                         style={"text-align": "center"}
@@ -151,23 +158,6 @@ def parse_contents(contents):
 
 # CALLBACKS
 @app.callback(
-    Output('output-image-upload', 'children'),
-    Input('upload-image', 'contents')
-)
-def image_output(contents):
-    if contents is not None:
-        image = parse_contents(contents)
-        image_array = np.array(image)
-        return html.Div([
-            html.H5("Image obtenue :"),
-            html.Img(src=contents, style={'width': '50%'})
-        ])
-    else:
-        return html.Div([
-            html.H5("Aucune image")
-        ])
-
-@app.callback(
     Output('confirm-image', 'disabled'),
     Input('upload-image', 'contents')
 )
@@ -177,24 +167,55 @@ def enable_confirm_button(contents):
     else:
         return True
 
-# @callback(
-#     Output("opencv-component", "children"),
-#     [Input("take-photo", "n_clicks")]
-# )
-# def update_webcam_content(n_clicks):
-#     print("PRINT 1")
-#     if n_clicks is None:
-#         raise PreventUpdate
-#     print("PRINT 2")
-#
-#     ret, frame = cap.read()
-#
-#     ret, buffer = cv2.imencode('.jpg', frame)
-#     frame_bytes = buffer.tobytes()
-#     encoded_image = base64.b64encode(frame_bytes)
-#     src = 'scrapping:image/jpeg;base64,{}'.format(encoded_image.decode())
-#
-#     return html.Img(src=src)
+def capture_frame():
+    success, frame = camera.read()
+    if success:
+        _, buffer = cv2.imencode('.jpg', frame)
+        encoded_image = base64.b64encode(buffer).decode('utf-8')
+        return f'data:image/jpeg;base64,{encoded_image}'
+    return None
+
+@app.callback(
+    Output('live-video-feed', 'src'),
+    [Input('interval-component', 'n_intervals')]
+)
+def update_live_feed(n_clicks):
+    return capture_frame()
+
+@app.callback(
+    Output('image-uploaded', 'children'),
+    [
+        Input('upload-image', 'contents'),
+        Input('get-photo', 'n_clicks')
+    ]
+)
+def update_image_uploaded(contents, n_clicks):
+    triggered_id = [p['prop_id'] for p in callback_context.triggered][0]
+
+    if triggered_id == 'upload-image.contents':
+        if contents is not None:
+            image = parse_contents(contents)
+            image_array = np.array(image)
+            return html.Div([
+                html.H5("Image obtenue :"),
+                html.Img(src=contents, style={'width': '50%'})
+            ])
+        else:
+            return html.Div([
+                html.H5("Aucune image")
+            ])
+
+    elif triggered_id == 'get-photo.n_clicks':
+        if n_clicks > 0:
+            src_image = capture_frame()
+            return html.Div([
+                html.H5("Image obtenue :"),
+                html.Img(src=src_image)
+            ])
+
+    return html.Div([
+        html.H5("Aucune image")
+    ])
 
 if __name__ == '__main__':
     app.run(
