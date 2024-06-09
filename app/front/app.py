@@ -5,7 +5,7 @@
 # pip install opencv-python
 import base64
 
-from dash import Dash, html, callback, Output, Input, State
+from dash import Dash, html, callback, Output, Input, State, dcc
 import dash_bootstrap_components as dbc
 import cv2
 from dash.exceptions import PreventUpdate
@@ -61,6 +61,13 @@ app.layout = html.Div([
                             id="take-video",
                             n_clicks=0,
                             style={"margin": "0 20px"},
+                        ),
+                        dcc.Upload(
+                            id="upload-image",
+                            children=html.Div([
+'Drag and Drop or ',
+            html.A('Select Files')
+                            ]),
                         ),
                     ],
                         width="auto",
