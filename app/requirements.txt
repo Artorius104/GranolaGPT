@@ -4,3 +4,4 @@ dash-core-components==2.0.0
 dash-html-components==2.0.0
 dash-table==5.0.0
 opencv-python==4.9.0.80
+pillow==10.3.0
