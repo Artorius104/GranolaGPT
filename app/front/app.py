@@ -5,7 +5,7 @@ from load_lib import load_my_lib, load_MyMLP, predict_MyMLP
 import base64
 import io
 
-from dash import Dash, html, Output, Input, dcc, callback_context
+from dash import Dash, html, Output, Input, dcc, callback_context, no_update
 import dash_bootstrap_components as dbc
 import cv2
 from dash.exceptions import PreventUpdate
@@ -136,9 +136,9 @@ app.layout = html.Div([
             [
                 dbc.Row(
                     dbc.Col(
-                        "Résultat de l'algorithme",
-                        id="algo-result",
-                        width=4,
+                        html.Div(id="model-result"),
+                        id="model-result-container",
+                        width="auto",
                         align="center",
                         style={"text-align": "center"}
                     ),
@@ -189,8 +189,10 @@ def update_live_feed(n_clicks):
     return capture_frame()
 
 @app.callback(
-    Output('image-uploaded', 'children'),
     [
+        Output('image-uploaded', 'children'),
+        Output('model-result', 'children')
+    ],[
         Input('upload-image', 'contents'),
         Input('get-photo', 'n_clicks')
     ]
@@ -201,6 +203,7 @@ def update_image_uploaded(contents, n_clicks):
 
     if triggered_id == 'upload-image.contents':
         if contents is not None:
+            emotion = ""
             image = parse_contents(contents).convert('RGB').resize((64, 64))
             image_array = np.array(image)
             image_array_normalized = image_array / 255.0
@@ -211,32 +214,61 @@ def update_image_uploaded(contents, n_clicks):
             
             print(image_array_flattened.reshape(1,-1).shape)
             prediction = np.argmax(predict_MyMLP(model, image_array_flattened.reshape(1,-1), 3, False))
-            
             print(prediction)
-            
-            # print(image_array_flattened.shape)
 
-            
+            if prediction == 2:
+                emotion = "HAPPY"
+            elif prediction == 1:
+                emotion = "NEUTRAL"
+            else:
+                emotion = "SAD"
+
             return html.Div([
                 html.H5("Image obtenue :"),
                 html.Img(src=contents, style={'width': '50%'})
-            ])
+            ]), html.Div(
+                html.H1(f"You are {emotion} !")
+            )
         else:
             return html.Div([
                 html.H5("Aucune image")
-            ])
+            ]), html.Div()
 
     elif triggered_id == 'get-photo.n_clicks':
         if n_clicks > 0:
+            emotion = ""
             src_image = capture_frame()
+            content_type, content_string = src_image.split(',')
+            decoded = base64.b64decode(content_string)
+            image = Image.open(io.BytesIO(decoded))
+            image_array = np.array(image)
+            image_array_normalized = image_array / 255.0
+            image_array_flattened = image_array_normalized.flatten()
+
+            model_path = "first_model.json"
+            model = load_MyMLP(model_path)
+
+            print(image_array_flattened.reshape(1, -1).shape)
+            prediction = np.argmax(predict_MyMLP(model, image_array_flattened.reshape(1, -1), 3, False))
+            print(prediction)
+
+            if prediction == 2:
+                emotion = "HAPPY"
+            elif prediction == 1:
+                emotion = "NEUTRAL"
+            else:
+                emotion = "SAD"
+
             return html.Div([
                 html.H5("Image obtenue :"),
                 html.Img(src=src_image)
-            ])
+            ]), html.Div(
+                html.H1(f"You are {emotion} !")
+            )
 
     return html.Div([
         html.H5("Aucune image")
-    ])
+    ]), html.Div()
     
 
 if __name__ == '__main__':
