@@ -381,8 +381,9 @@ impl ActivationLayer{
         };
         // println!("Backward Activation");
         let (output_depth, output_height, output_width) = self.input_shape;
-        // println!("output_gradient_shape = {:?}", (output_gradient.len(), output_gradient[0].len(), output_gradient[0][0].len()));
+
         let mut input_gradient = output_gradient.clone();
+
         for d in 0..output_depth{
             for h in 0..output_height{
                 for w in 0..output_width{

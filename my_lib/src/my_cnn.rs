@@ -7,14 +7,14 @@ use std::fs::File;
 use std::io::{self, Read, Write};
 
 use crate::layer::Layer;
-use crate::utils::{reshape, reshape2D};
+use crate::utils::{print_matrix, print_3d, reshape, reshape2D};
 
 #[derive(Serialize, Deserialize)]
 pub struct MyCNN{
     pub network:Vec<Layer>,
     pub loss_name:String,
-    train_losses: Vec<f64>,
-    test_losses: Vec<f64>
+    pub train_losses: Vec<f64>,
+    pub test_losses: Vec<f64>
 }
 
 impl MyCNN{
@@ -31,57 +31,107 @@ impl MyCNN{
         }
     }
 
-    pub fn train(&mut self,  X_train: Vec<Vec<Vec<Vec<f64>>>>, y_train: Vec<Vec<f64>>, X_test: Vec<Vec<Vec<Vec<f64>>>>, y_test: Vec<Vec<f64>>, 
-                        learning_rate: f64, 
-                        epochs: usize) {
+    // pub fn train(&mut self,  X_train: Vec<Vec<Vec<Vec<f64>>>>, y_train: Vec<Vec<f64>>, X_test: Vec<Vec<Vec<Vec<f64>>>>, y_test: Vec<Vec<f64>>, 
+    //                     learning_rate: f64, 
+    //                     epochs: usize) {
+    //     let n_samples_train = X_train.len();
+    //     let n_samples_test = X_test.len();
+    
+    //     let mut train_losses: Vec<f64> = vec![];
+    //     let mut test_losses: Vec<f64> = vec![];
+
+    //     println!("X_train shape = {:?}", (X_train.len(), X_train[0].len(), X_train[0][0].len(), X_train[0][0][0].len()));
+    //     println!("y_train shape = {:?}", (y_train.len(), y_train[0].len()));
+
+    //     println!("X_test shape = {:?}", (X_test.len(), X_test[0].len(), X_test[0][0].len(), X_test[0][0][0].len()));
+    //     println!("y_test shape = {:?}", (y_test.len(), y_test[0].len()));
+        
+    //     println!("\nTraining MyCNN starting...\n");
+    //     for it in 0..epochs {
+    //         let mut train_error = 0.;
+    //         for (X_i, y_i) in X_train.iter().zip(y_train.iter()) {
+    //             let input = X_i.clone();
+    //             let prediction = self.predict(vec![input])[0][0][0].clone();
+    //             let mut gradient: Vec<f64> = vec![];
+    //             // println!("Predict done");
+    //             for (pred, true_value) in prediction.iter().zip(y_i.iter()) {
+    //                 train_error += (*pred - *true_value).powf(2.) / y_train.len() as f64;
+
+    //                 let grad_pred = 2.0 * (pred - true_value) / y_train.len() as f64;
+    //                 gradient.push(grad_pred);
+    //             }
+    //             // println!("gradient done");
+    //             let mut gradient = vec![vec![gradient]];
+                
+    //             // println!("\n\nStarting Backpropagation...");
+    //             for layer in self.network.iter_mut().rev() {
+    //                 // layer.print_type();
+    //                 gradient = layer.backward(gradient.clone(), learning_rate);
+    //             }
+
+    //         }
+    //         train_error /= n_samples_train as f64;
+    //         train_losses.push(train_error);
+    
+    //         // Calcul de la loss sur le X_test
+    //         let mut test_error = 0.;
+    //         for (X_i, y_i) in X_test.iter().zip(y_test.iter()) {
+    //             let input = X_i.clone();
+    //             let prediction = self.predict(vec![input])[0][0][0].clone();
+
+    //             for (pred, true_value) in prediction.iter().zip(y_i.iter()) {
+    //                 test_error += (*pred - *true_value).powf(2.) / y_test.len() as f64;
+    //             }
+    //         }
+    //         test_error /= n_samples_test as f64;
+    //         test_losses.push(test_error);
+    
+    //         println!("epoch {:?} => train_loss = {:?} || test_loss = {:?}", it, train_error, test_error);
+    //     }
+    //     self.train_losses = train_losses;
+    //     self.test_losses = test_losses;
+    // }
+    pub fn train(&mut self, X_train: Vec<Vec<Vec<Vec<f64>>>>, y_train: Vec<Vec<f64>>, X_test: Vec<Vec<Vec<Vec<f64>>>>, y_test: Vec<Vec<f64>>, learning_rate: f64, epochs: usize) {
         let n_samples_train = X_train.len();
         let n_samples_test = X_test.len();
-    
-        let mut train_losses: Vec<f64> = vec![];
-        let mut test_losses: Vec<f64> = vec![];
-    
+
+        println!("X_train shape = {:?}", (X_train.len(), X_train[0].len(), X_train[0][0].len(), X_train[0][0][0].len()));
+        println!("y_train shape = {:?}", (y_train.len(), y_train[0].len()));
+
+        println!("X_test shape = {:?}", (X_test.len(), X_test[0].len(), X_test[0][0].len(), X_test[0][0][0].len()));
+        println!("y_test shape = {:?}", (y_test.len(), y_test[0].len()));
+
+        println!("\nTraining MyCNN starting...\n");
         for it in 0..epochs {
-            let mut train_error = 0.;
-    
-            for (X_i, y_i) in X_train.iter().zip(y_train.iter()) {
-                let input = X_i.clone();
-                let prediction = self.predict(vec![input])[0][0][0].clone();
-                let mut gradient: Vec<f64> = vec![];
-    
-                for (pred, true_value) in prediction.iter().zip(y_i.iter()) {
-                    train_error += (*pred - *true_value).powf(2.);
-    
-                    let grad_pred = 2.0 * (pred - true_value) / y_i.len() as f64;
-                    gradient.push(grad_pred);
-                }
-    
-                let mut gradient = vec![vec![gradient]];
-    
-                for layer in self.network.iter_mut().rev() {
-                    gradient = layer.backward(gradient.clone(), learning_rate);
-                }
+        let mut train_error = 0.0;
+        for (X_i, y_i) in X_train.iter().zip(y_train.iter()) {
+            let input = X_i.clone();
+            let prediction = self.predict(vec![input.clone()])[0][0][0].clone();
+            train_error += mse(y_i.clone(), prediction.clone());
+
+            let gradient = mse_prime(y_i.clone(), prediction);
+            let mut gradient = vec![vec![gradient]];
+
+            for layer in self.network.iter_mut().rev() {
+                gradient = layer.backward(gradient.clone(), learning_rate);
             }
-            train_error /= n_samples_train as f64;
-            train_losses.push(train_error);
-    
-            // Calcul de la loss sur le X_test
-            let mut test_error = 0.;
-            for (X_i, y_i) in X_test.iter().zip(y_test.iter()) {
-                let input = X_i.clone();
-                let prediction = self.predict(vec![input])[0][0][0].clone();
-    
-                for (pred, true_value) in prediction.iter().zip(y_i.iter()) {
-                    test_error += (*pred - *true_value).powf(2.);
-                }
-            }
-            test_error /= n_samples_test as f64;
-            test_losses.push(test_error);
-    
-            println!("epoch {:?} => train_loss = {:?} || test_loss = {:?}", it, train_error, test_error);
         }
-        self.train_losses = train_losses;
-        self.test_losses = test_losses;
+        train_error /= n_samples_train as f64;
+        self.train_losses.push(train_error);
+
+        // Calcul de la loss sur le X_test
+        let mut test_error = 0.0;
+        for (X_i, y_i) in X_test.iter().zip(y_test.iter()) {
+            let input = X_i.clone();
+            let prediction = self.predict(vec![input.clone()])[0][0][0].clone();
+            test_error += mse(y_i.clone(), prediction);
+        }
+        test_error /= n_samples_test as f64;
+        self.test_losses.push(test_error);
+
+        println!("epoch {} => train_loss = {:.6} || test_loss = {:.6}", it, train_error, test_error);
     }
+}
 
     pub fn predict(&mut self, X:Vec<Vec<Vec<Vec<f64>>>>) ->Vec<Vec<Vec<Vec<f64>>>>{
         let mut predictions = Vec::new();
@@ -90,6 +140,9 @@ impl MyCNN{
             let mut output = input.clone();
             for layer in self.network.iter_mut() {
                 output = layer.forward(output.clone());
+                
+                // layer.print_type();
+                // println!("output shape : {:?}\n", (output.len(), output[0].len(), output[0][0].len()));
             }
             // println!("final output =\n{:?}", output);
 
@@ -97,16 +150,6 @@ impl MyCNN{
         }
         predictions
     }
-}
-
-pub fn save(model: &MyCNN, path: &str) {
-    let serialized = serde_json::to_string(model).unwrap();
-    std::fs::write(path, serialized).unwrap();
-}
-
-pub fn load(path: &str) -> MyCNN {
-    let data = std::fs::read_to_string(path).unwrap();
-    serde_json::from_str(&data).unwrap()
 }
 
 fn mse(y_true: Vec<f64>, y_pred: Vec<f64>) -> f64 {
@@ -118,6 +161,16 @@ fn mse(y_true: Vec<f64>, y_pred: Vec<f64>) -> f64 {
     }
     
     sum / n as f64
+}
+
+pub fn MyCNN_save(model: &MyCNN, path: &str) {
+    let serialized = serde_json::to_string(model).unwrap();
+    std::fs::write(path, serialized).unwrap();
+}
+
+pub fn MyCNN_load(path: &str) -> MyCNN {
+    let data = std::fs::read_to_string(path).unwrap();
+    serde_json::from_str(&data).unwrap()
 }
 
 fn mse_prime(y_true: Vec<f64>, y_pred: Vec<f64>) -> Vec<f64> {
@@ -204,17 +257,14 @@ pub extern "C" fn train_MyCNN(p_model: *mut MyCNN,
     }.to_vec();
 
     let X_train = reshape(X_train_flatten, (n_images_train as usize, image_depth as usize, image_height as usize, image_width as usize));
+
     let y_train = reshape2D(y_train_flatten, (n_images_train as usize, y_dim as usize));
 
     let X_test = reshape(X_test_flatten, (n_images_test as usize, image_depth as usize, image_height as usize, image_width as usize));
+    
     let y_test = reshape2D(y_test_flatten, (n_images_test as usize, y_dim as usize));
 
-    // println!("X =\n{:?}", X);
-    // println!("y =\n{:?}\n", y);
     model.train(X_train, y_train, X_test, y_test, learning_rate, epochs as usize);
-
-    // let leaked_losses = Vec::leak(losses.to_vec());
-    // leaked_losses.as_ptr()
 }
 
 
@@ -266,7 +316,7 @@ pub extern "C" fn save_MyCNN(p_model: *mut MyCNN, path: *const c_char) {
     };
     let path_str = c_str.to_str().unwrap();
 
-    save(model, path_str);
+    MyCNN_save(model, path_str);
 }
 
 #[no_mangle]
@@ -277,7 +327,7 @@ pub extern "C" fn load_MyCNN(path: *const c_char) -> *mut MyCNN {
     };
     let path_str = c_str.to_str().unwrap();
 
-    let model = load(path_str);
+    let model = MyCNN_load(path_str);
     let boxed_model = Box::new(model);
     let leaked_model = Box::leak(boxed_model);
     leaked_model

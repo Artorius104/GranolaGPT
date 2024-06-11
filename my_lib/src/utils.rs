@@ -1,6 +1,7 @@
 use std::cmp::{max, min};
 extern crate nalgebra;
 use nalgebra::{DMatrix, DVector};
+use rand::Rng;
 
 pub fn chunk_vector(input: Vec<f64>, chunk_size: usize) -> Vec<Vec<f64>> {
     let mut result: Vec<Vec<f64>> = Vec::new();
@@ -65,6 +66,25 @@ pub fn print_matrix(vec: &Vec<Vec<f64>>) {
     println!("]");
 }
 
+pub fn print_3d(vec: &Vec<Vec<Vec<f64>>>) {
+    println!("[");
+    for matrix in vec {
+        println!("  [");
+        for row in matrix {
+            print!("    [");
+            for (i, val) in row.iter().enumerate() {
+                if (i != 0) {
+                    print!(", ");
+                }
+                print!("{:.2}", val);
+            }
+            println!("],");
+        }
+        println!("  ],");
+    }
+    println!("]");
+}
+
 pub fn gauss_kernel(x: &Vec<f64>, c: &Vec<f64>, gamma: f64) -> f64 {
     let mut sum = 0.0;
     for i in 0..x.len() {
@@ -118,4 +138,47 @@ pub fn reshape(input: Vec<f64>, reshape_shape: (usize, usize, usize, usize)) -> 
         reshaped.push(image_depth_vec);
     }
     reshaped
+}
+
+pub fn generate_random_4d_tensor(shape: (usize, usize, usize, usize)) -> Vec<Vec<Vec<Vec<f64>>>> {
+    let (d1, d2, d3, d4) = shape;
+    let mut rng = rand::thread_rng();
+
+    let mut tensor = vec![
+        vec![
+            vec![
+                vec![0.0; d4];
+                d3
+            ];
+            d2
+        ];
+        d1
+    ];
+
+    for i in 0..d1 {
+        for j in 0..d2 {
+            for k in 0..d3 {
+                for l in 0..d4 {
+                    tensor[i][j][k][l] = rng.gen_range(0.0..1.0);
+                }
+            }
+        }
+    }
+
+    tensor
+}
+
+pub fn generate_random_2d_tensor(shape: (usize, usize)) -> Vec<Vec<f64>> {
+    let (d1, d2) = shape;
+    let mut rng = rand::thread_rng();
+
+    let mut tensor = vec![vec![0.0; d2]; d1];
+
+    for i in 0..d1 {
+        for j in 0..d2 {
+            tensor[i][j] = rng.gen_range(0.0..1.0);
+        }
+    }
+
+    tensor
 }
