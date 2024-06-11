@@ -58,28 +58,43 @@ app.layout = html.Div([
             ),
             dcc.Interval(id='interval-component', interval=100, n_intervals=0), # FLUX VIDEO
             dbc.Stack([
+                dbc.Row(
+                    dbc.Col(
+                        dbc.DropdownMenu(
+                            [
+                                dbc.DropdownMenuItem(
+                                    "A button", id="dropdown-button", n_clicks=0
+                                ),
+                                dbc.DropdownMenuItem(
+                                    "Internal link", href="/docs/components/dropdown_menu"
+                                ),
+                                dbc.DropdownMenuItem(
+                                    "External Link", href="https://github.com"
+                                ),
+                                dbc.DropdownMenuItem(
+                                    "External relative",
+                                    href="/docs/components/dropdown_menu",
+                                    external_link=True,
+                                ),
+                            ],
+                            label="Select the model to use",
+                        ),
+                        width="auto",
+                    ),
+                    justify="center"
+                ),
                 dbc.Row([
-                    dbc.Col([   # BOUTON PHOTO
+                    dbc.Col(   # BOUTON PHOTO
                         dbc.Button(
                             "Prendre une photo",
                             id="get-photo",
                             n_clicks=0,
                             style={"margin": "0 20px 0 0"},
                         ),
-                        dbc.Button(     # BOUTON VIDEO (NON FAIT)
-                            "Prendre une vidéo",
-                            id="get-video",
-                            n_clicks=0,
-                            disabled=True,
-                            style={"margin": "0 0 0 20px"},
-                        )],
-                        width="auto",
-                    )],
-                    justify="center"
-                ),
-                dbc.Row(
+                        width="auto"
+                    ),
                     dbc.Col(
-                        dcc.Upload( # UPLOAD BOUTON
+                        dcc.Upload(  # UPLOAD BOUTON
                             id="upload-image",
                             children=dbc.Button([
                                 'Drag and Drop or ',
@@ -90,8 +105,8 @@ app.layout = html.Div([
                                 }
                             ),
                         ),
-                        width="auto",
-                    ),
+                        width="auto"
+                    )],
                     justify="center"
                 )],
                 gap=3
