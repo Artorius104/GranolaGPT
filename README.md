@@ -4,9 +4,9 @@
 La librairie a été réalisé en Rust avec l'interop vers Python.
 
 Les algorithmes réalisés (ou en cours de réalisation) sont les suivants :
+  - Modèle linéaire
   - MLP
   - RBF
-  - SVM
   - CNN
 
 Pour build la librairie, l'utilisateur doit lancer la commande suivante :
