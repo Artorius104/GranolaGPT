@@ -15,17 +15,12 @@ API_KEY = {
 }
 
 queries = [
-    "sad+person+portrait",
-    "crying+person+portrait",
-    "depressed+person+portrait",
-    "lonely+person+portrait",
-    "unhappy+person+portrait",
-    # "sad+person", "sad+man", "sad+woman", "sad+child",
-    # "sad+portrait", "sad+person+portrait", "sad+man+portrait", "sad+woman+portrait", "sad+child+portrait",
-    # "crying+portrait", "crying+person+portrait", "crying+man+portrait", "crying+woman+portrait", "crying+child+portrait",
-    # "depressed+portrait", "depressed+person+portrait", "depressed+man+portrait", "depressed+woman+portrait", "depressed+child+portrait",
-    # "lonely+person", "lonely+man", "lonely+woman", "lonely+child",
-    # "unhappy+person", "unhappy+man", "unhappy+woman", "unhappy+child",
+    "sad person", "sad man", "sad woman", "sad child",
+    "sad person portrait", "sad man portrait", "sad woman portrait", "sad child portrait",
+    "crying person portrait", "crying man portrait", "crying woman portrait", "crying child portrait",
+    "depressed person portrait", "depressed man portrait", "depressed woman portrait", "depressed child portrait",
+    "lonely person", "lonely man", "lonely woman", "lonely child",
+    "unhappy person", "unhappy man", "unhappy woman", "unhappy child",
 ]
 
 
@@ -79,6 +74,7 @@ def main():
     for query in queries:
         params = {
             'query': query,
+            'locale': 'fr-FR',
             'page': str(1),
             'per_page': str(80)
         }
