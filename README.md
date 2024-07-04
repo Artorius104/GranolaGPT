@@ -56,3 +56,9 @@ Pour lancer l'application, l'utilisateur doit aller dans **/app/front** et lance
 python app.py
 ```
 
+## Expérimentation
+
+(Parler des problèmes d'apprentissage avec un dataset black&white)
+(Parler des problèmes d'apprentissage avec les images de la classe très différentes des 2 autres)
+(Parler de l'amélioration après le stripe des images happy et neutral)
+(Scrapping des 2 autres émotions au cas où)
