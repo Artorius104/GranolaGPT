@@ -60,5 +60,6 @@ python app.py
 
 (Parler des problèmes d'apprentissage avec un dataset black&white)
 (Parler des problèmes d'apprentissage avec les images de la classe très différentes des 2 autres)
+Les images des classes happy et neutral sont beaucoup plus épurées et centrées pas anglés
 (Parler de l'amélioration après le stripe des images happy et neutral)
 (Scrapping des 2 autres émotions au cas où)
