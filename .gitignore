@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# Environnement virtuel
+venv/
+.venv/
+env/
+
+# Rust build artifacts
+my_lib/target/
+
+# Dataset (trop lourd pour git)
+dataset/
+dataset_upgrade/
+
+# Modèle entraîné (généré localement via train_mlp.py)
+app/front/best_model.json
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Jupyter
+.ipynb_checkpoints/
